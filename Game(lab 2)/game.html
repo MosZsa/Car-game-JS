@@ -1,20 +1,23 @@
 <!DOCTYPE html>
-<html>
-	<head>
-		<title>JS Game</title>
-		<link rel="stylesheet" href="css/style.css">
-		<meta charset="utf-8">
-		<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0' />
-		<meta name="apple-mobile-web-app-capable" content="yes">
-		<meta name="mobile-web-app-capable" content="yes">
-		<meta name="HandheldFriendly" content="true"/>
-	</head>
-	<body>
-		<div class="wrapper">
-			<canvas width="0" height="0" class="canvas" id="canvas">Your browser does not support JavaScript and HTML5!</canvas>
-			<p id="musicNotice">Нажмите на экран, чтобы начать воспроизведение музыки.</p>
-			<p id="stopNotice">Нажмите на Esc для паузы игры.</p>
-		</div>
-		<script src="JS/game.js"></script>
-	</body>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Car Game JS</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="gameContainer">
+        <div class="road" id="road1"></div>
+        <div class="road" id="road2"></div>
+        <div class="car" id="playerCar"></div>
+        <div class="car" id="reverseCar" style="display: none;"></div>
+        <div id="score">Score: 0</div>
+        <div id="instructions">Нажмите на Esc для паузы игры.</div>
+        <div id="playMusic">Нажмите на экран, чтобы начать воспроизведение музыки.</div>
+        <button id="restartButton">Restart</button>
+    </div>
+
+    <script src="JS/game.js"></script>
+</body>
 </html>

@@ -1,340 +1,189 @@
-class Road
-{
-	constructor(image, y)
-	{
-		this.x = 0;
-		this.y = y;
-		this.loaded = false;
+class Road {
+    constructor(element, y) {
+        this.element = element;
+        this.y = y;
+        this.updatePosition();
+    }
 
-		this.image = new Image();
-		
-		var obj = this;
+    updatePosition() {
+        this.element.style.top = `${this.y}px`;
+    }
 
-		this.image.addEventListener("load", function () { obj.loaded = true; });
-
-		this.image.src = image;
-	}
-
-	Update(road) 
-	{
-		this.y += speed; 
-
-		if(this.y > window.innerHeight) 
-		{
-			this.y = road.y - canvas.width + speed; 
-		}
-	}
+    update(speed) {
+        this.y += speed;
+        if (this.y >= window.innerHeight) {
+            this.y = -window.innerHeight + speed;
+        }
+        this.updatePosition();
+    }
 }
 
-class Car
-{
-	constructor(image, x, y, isPlayer)
-	{
-		this.x = x;
-		this.y = y;
-		this.loaded = false;
-		this.dead = false;
-		this.isPlayer = isPlayer;
+class Car {
+    constructor(element, x, y, isPlayer) {
+        this.element = element;
+        this.x = x;
+        this.y = y;
+        this.isPlayer = isPlayer;
+        this.dead = false;
+        this.updatePosition();
+    }
 
-		this.image = new Image();
+    updatePosition() {
+        this.element.style.left = `${this.x}px`;
+        this.element.style.top = `${this.y}px`;
+    }
 
-		var obj = this;
+    update(speed) {
+        if (!this.isPlayer) {
+            this.y += speed;
+            if (this.y > window.innerHeight) {
+                this.dead = true;
+            }
+            this.updatePosition();
+        }
+    }
 
-		this.image.addEventListener("load", function () { obj.loaded = true; });
+    collide(car) {
+        return !(
+            this.y + this.element.offsetHeight < car.y ||
+            this.y > car.y + car.element.offsetHeight ||
+            this.x + this.element.offsetWidth < car.x ||
+            this.x > car.x + car.element.offsetWidth
+        );
+    }
 
-		this.image.src = image;
-	}
-
-	Update()
-	{
-		if(!this.isPlayer)
-		{
-			this.y += speed;
-		}
-
-		if(this.y > canvas.height + 50)
-		{
-			this.dead = true;
-		}
-	}
-
-	Collide(car)
-	{
-		var hit = false;
-
-		if(this.y < car.y + car.image.height * scale && this.y + this.image.height * scale > car.y) 
-		{
-			if(this.x + this.image.width * scale > car.x && this.x < car.x + car.image.width * scale) 
-			{
-				hit = true;
-			}
-		}
-
-		return hit;
-	}
-
-	Move(v, d) 
-	{
-		if(v == "x") 
-		{
-			d *= 2;
-
-			this.x += d; 
-
-			
-			if(this.x + this.image.width * scale > canvas.width)
-			{
-				this.x -= d; 
-			}
-	
-			if(this.x < 0)
-			{
-				this.x = 0;
-			}
-		}
-		else 
-		{
-			this.y += d;
-
-			if(this.y + this.image.height * scale > canvas.height)
-			{
-				this.y -= d;
-			}
-
-			if(this.y < 0)
-			{
-				this.y = 0;
-			}
-		}
-		
-	}
+    move(dx, dy) {
+        this.x += dx;
+        this.y += dy;
+        if (this.x < 0) this.x = 0;
+        if (this.x + this.element.offsetWidth > window.innerWidth) this.x = window.innerWidth - this.element.offsetWidth;
+        if (this.y < 0) this.y = 0;
+        if (this.y + this.element.offsetHeight > window.innerHeight) this.y = window.innerHeight - this.element.offsetHeight;
+        this.updatePosition();
+    }
 }
-
 
 const UPDATE_TIME = 1000 / 60;
+let speed = 8;
+let score = 0;
+let roads = [];
+let objects = [];
+let player;
+let timer = null;
+let music;
+let isPaused = false;
 
-var timer = null;
+document.addEventListener('DOMContentLoaded', () => {
+    const gameContainer = document.getElementById('gameContainer');
+    const road1 = document.getElementById('road1');
+    const road2 = document.getElementById('road2');
+    const playerCar = document.getElementById('playerCar');
+    const scoreElement = document.getElementById('score');
+    const instructionsElement = document.getElementById('instructions');
+    const playMusicElement = document.getElementById('playMusic');
+    const restartButton = document.getElementById('restartButton');
+    music = new Audio('Music/background_music.mp3');
 
-var canvas = document.getElementById("canvas"); 
-var ctx = canvas.getContext("2d"); 
+    console.log('Elements loaded:', { road1, road2, playerCar });
 
-var scale = 0.2; 
+    roads = [
+        new Road(road1, 0),
+        new Road(road2, -window.innerHeight)
+    ];
 
-Resize(); 
+    playerCar.style.backgroundImage = "url('images/car.png')";
+    player = new Car(playerCar, window.innerWidth / 2 - 30, window.innerHeight / 2, true);
 
-window.addEventListener("resize", Resize); 
+    restartButton.addEventListener('click', () => location.reload());
 
+    gameContainer.addEventListener('click', () => {
+        if (!player.dead && !isPaused) {  // Только если игра активна и не на паузе
+            if (music.paused) {
+                music.play();
+            } else {
+                music.pause();
+            }
+        }
+    });
 
-canvas.addEventListener("contextmenu", function (e) { e.preventDefault(); return false; }); 
+    music.loop = true;
+    music.volume = 0.2;
 
-window.addEventListener("keydown", function (e) { KeyDown(e); }); 
+    window.addEventListener('keydown', (e) => {
+        if (player.dead) return;
+        switch (e.keyCode) {
+            case 37:
+                if (!isPaused) player.move(-speed, 0);
+                break;
+            case 39:
+                if (!isPaused) player.move(speed, 0);
+                break;
+            case 38:
+                if (!isPaused) player.move(0, -speed);
+                break;
+            case 40:
+                if (!isPaused) player.move(0, speed);
+                break;
+            case 27:
+                togglePause();
+                break;
+        }
+    });
 
-var objects = []; 
+    function togglePause() {
+        if (isPaused) {
+            timer = setInterval(update, UPDATE_TIME);
+            isPaused = false;
+        } else {
+            clearInterval(timer);
+            timer = null;
+            isPaused = true;
+        }
+        music.pause(); // Останавливаем музыку при каждом нажатии Esc
+    }
 
-var roads = 
-[
-	new Road("images/road.jpg", 0),
-	new Road("images/road.jpg", canvas.width)
-]; 
+    function startGame() {
+        if (player.dead) return;
+        timer = setInterval(update, UPDATE_TIME);
+        isPaused = false;
+    }
 
-var player = new Car("images/car.png", canvas.width / 2, canvas.height / 2, true); 
+    function update() {
+        roads.forEach(road => road.update(speed));
 
+        if (Math.random() > 0.97) {
+            const newCarElement = document.createElement('div');
+            newCarElement.className = 'car';
+            newCarElement.style.backgroundImage = "url('images/car_reverse.png')";
+            newCarElement.style.left = `${Math.random() * (window.innerWidth - 60)}px`;
+            newCarElement.style.top = '-120px';
+            gameContainer.appendChild(newCarElement);
+            objects.push(new Car(newCarElement, parseFloat(newCarElement.style.left), parseFloat(newCarElement.style.top), false));
+            console.log(`New car created at: x=${newCarElement.style.left}, y=${newCarElement.style.top}`);
+        }
 
-var speed = 8; 
+        player.update();
 
-var score = 0; 
+        objects.forEach((obj, index) => {
+            obj.update(speed);
+            if (obj.dead) {
+                obj.element.remove();
+                objects.splice(index, 1);
+                score++;
+                scoreElement.innerText = `Score: ${score}`;
+            }
+        });
 
-var music = new Audio("Music/background_music.mp3");
-music.loop = true; 
+        objects.some(obj => {
+            if (player.collide(obj)) {
+                player.dead = true;
+                clearInterval(timer);
+                music.pause();
+                restartButton.style.display = 'block';
+                return true;
+            }
+        });
+    }
 
-canvas.addEventListener("click", 
-function() {
-    music.play(); 
+    startGame();
 });
-
-music.volume = 0.2;
-
-Start();
-
-function Start()
-{
-	if(!player.dead)
-	{
-		timer = setInterval(Update, UPDATE_TIME); 
-	}
-	
-}
-
-function Stop()
-{
-	clearInterval(timer); 
-	timer = null;
-}
-
-function Update() 
-{
-	roads[0].Update(roads[1]);
-	roads[1].Update(roads[0]);
-
-	if(RandomInteger(0, 10000) > 9700) 
-	{
-		objects.push(new Car("images/car_reverse.png", RandomInteger(30, canvas.width - 50), RandomInteger(250, 400) * -1, false));
-	}
-
-	player.Update();
-
-	if(player.dead)
-	{
-		alert("Crash!");
-		Stop();
-		showRestartButton(); 
-	}
-
-	var isDead = false; 
-
-	for(var i = 0; i < objects.length; i++)
-	{
-		objects[i].Update();
-
-		if(objects[i].dead)
-		{
-			isDead = true;
-		}
-	}
-
-	if(isDead)
-	{
-		objects.shift();
-		score++; 
-	}
-
-	var hit = false;
-
-	for(var i = 0; i < objects.length; i++)
-	{
-		hit = player.Collide(objects[i]);
-
-		if(hit)
-		{
-			alert("Crash!");
-			Stop();
-			showRestartButton(); 
-			player.dead = true;
-			break;
-		}
-	}
-
-	Draw();
-}
-
-function Draw() 
-{
-	ctx.clearRect(0, 0, canvas.width, canvas.height); 
-
-	for(var i = 0; i < roads.length; i++)
-	{
-		ctx.drawImage
-		(
-			roads[i].image, 
-			0, 
-			0, 
-			roads[i].image.width, 
-			roads[i].image.height, 
-			roads[i].x, 
-			roads[i].y, 
-			canvas.width, 
-			canvas.width 
-		);
-	}
-
-	DrawCar(player);
-
-	for(var i = 0; i < objects.length; i++)
-	{
-		DrawCar(objects[i]);
-	}
-
-	drawScore(); 
-}
-
-function DrawCar(car)
-{
-	ctx.drawImage
-	(
-		car.image, 
-		0, 
-		0, 
-		car.image.width, 
-		car.image.height, 
-		car.x, 
-		car.y, 
-		car.image.width * scale, 
-		car.image.height * scale 
-	);
-}
-
-function KeyDown(e)
-{
-	switch(e.keyCode)
-	{
-		case 37: 
-			player.Move("x", -speed);
-			break;
-
-		case 39: 
-			player.Move("x", speed);
-			break;
-
-		case 38: 
-			player.Move("y", -speed);
-			break;
-
-		case 40: 
-			player.Move("y", speed);
-			break;
-
-		case 27: 
-			if(timer == null)
-			{
-				Start();
-			}
-			else
-			{
-				Stop();
-			}
-			break;
-	}
-}
-
-function Resize()
-{
-	canvas.width = window.innerWidth;
-	canvas.height = window.innerHeight;
-}
-
-function RandomInteger(min, max) 
-{
-	let rand = min - 0.5 + Math.random() * (max - min + 1);
-	return Math.round(rand);
-}
-
-function drawScore() {
-	ctx.fillStyle = "#ffffff";
-	ctx.font = "24px Arial";
-	ctx.fillText("Score: " + score, 10, 30); 
-}
-
-function showRestartButton() {
-	var button = document.createElement("button"); 
-	button.innerHTML = "Restart"; 
-	button.style.position = "absolute";
-	button.style.left = "50%";
-	button.style.top = "50%";
-	button.style.width = "100px"
-	button.style.height = "100px"
-	button.style.transform = "translate(-50%, -50%)";
-	button.onclick = function() {
-		location.reload(); 
-	};
-	document.body.appendChild(button); 
-}
